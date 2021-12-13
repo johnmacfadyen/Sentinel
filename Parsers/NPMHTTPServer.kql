@@ -4,40 +4,41 @@
 // Paste below query in log analytics, click on Save button and select as Function from drop down by specifying function name and alias as NGINXHTTPServer.
 // Function usually takes 10-15 minutes to activate. You can then use function alias from any other queries (e.g. NGINXHTTPServer | take 10).
 // Reference : Using functions in Azure monitor log queries : https://docs.microsoft.com/azure/azure-monitor/log-query/functions
-
+let LogRegEx = @'(\[[^\]]*]) - ([0-9]+) ([0-9]+) - ([a-zA-Z]+) ([a-zA-Z]+) ([a-zA-Z]+(\.[a-zA-Z]+)+) "([^"]*)" \[Client (\b(?:(?:2(?:[0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9])\.){3}(?:(?:2([0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9]))\b)] \[Length ([0-9]+)] \[Gzip -] \[Sent-to (([0-9+(\.[0-9]+)+)] "([^"]*)" "([^"]*)"';
 let nginx_accesslog_events =() {
 NGINX_CL
-| where RawData matches regex @'(\[[^\]]*]) - ([0-9]+) ([0-9]+) - ([a-zA-Z]+) ([a-zA-Z]+) ([a-zA-Z]+(\.[a-zA-Z]+)+) "([^"]*)" \[Client (\b(?:(?:2(?:[0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9])\.){3}(?:(?:2([0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9]))\b)] \[Length ([0-9]+)] \[Gzip -] \[Sent-to (([0-9+(\.[0-9]+)+)] "([^"]*)" "([^"]*)"'
+| where RawData matches regex LogRegEx
 | extend EventProduct = 'NGINX Proxy Manager'
 | extend EventType = 'AccessLog'
-| extend SrcIpAddr = extract(@'(\[[^\]]*]) - ([0-9]+) ([0-9]+) - ([a-zA-Z]+) ([a-zA-Z]+) ([a-zA-Z]+(\.[a-zA-Z]+)+) "([^"]*)" \[Client (\b(?:(?:2(?:[0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9])\.){3}(?:(?:2([0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9]))\b)] \[Length ([0-9]+)] \[Gzip -] \[Sent-to (([0-9+(\.[0-9]+)+)] "([^"]*)" "([^"]*)"', 9, RawData)
+| extend SrcIpAddr = extract(LogRegEx, 9, RawData)
 | extend EventStartTime = todatetime(replace(@'\/', @'-', replace(@'(\d{2}\/\w{3}\/\d{4}):(\d{2}\:\d{2}\:\d{2})', @'\1 \2', extract(@'\[(.*?)\+\d+\]', 1, RawData))))
-| extend HttpRequestMethod = extract(@'(\[[^\]]*]) - ([0-9]+) ([0-9]+) - ([a-zA-Z]+) ([a-zA-Z]+) ([a-zA-Z]+(\.[a-zA-Z]+)+) "([^"]*)" \[Client (\b(?:(?:2(?:[0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9])\.){3}(?:(?:2([0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9]))\b)] \[Length ([0-9]+)] \[Gzip -] \[Sent-to (([0-9+(\.[0-9]+)+)] "([^"]*)" "([^"]*)"', 4, RawData)
-| extend Host = extract(@'(\[[^\]]*]) - ([0-9]+) ([0-9]+) - ([a-zA-Z]+) ([a-zA-Z]+) ([a-zA-Z]+(\.[a-zA-Z]+)+) "([^"]*)" \[Client (\b(?:(?:2(?:[0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9])\.){3}(?:(?:2([0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9]))\b)] \[Length ([0-9]+)] \[Gzip -] \[Sent-to (([0-9+(\.[0-9]+)+)] "([^"]*)" "([^"]*)"', 6, RawData)
-| extend UrlOriginal = extract(@'(\[[^\]]*]) - ([0-9]+) ([0-9]+) - ([a-zA-Z]+) ([a-zA-Z]+) ([a-zA-Z]+(\.[a-zA-Z]+)+) "([^"]*)" \[Client (\b(?:(?:2(?:[0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9])\.){3}(?:(?:2([0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9]))\b)] \[Length ([0-9]+)] \[Gzip -] \[Sent-to (([0-9+(\.[0-9]+)+)] "([^"]*)" "([^"]*)"', 8, RawData)
-| extend Upstream = extract(@'(\[[^\]]*]) - ([0-9]+) ([0-9]+) - ([a-zA-Z]+) ([a-zA-Z]+) ([a-zA-Z]+(\.[a-zA-Z]+)+) "([^"]*)" \[Client (\b(?:(?:2(?:[0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9])\.){3}(?:(?:2([0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9]))\b)] \[Length ([0-9]+)] \[Gzip -] \[Sent-to (([0-9+(\.[0-9]+)+)] "([^"]*)" "([^"]*)"', 13, RawData)
-| extend Scheme = extract(@'(\[[^\]]*]) - ([0-9]+) ([0-9]+) - ([a-zA-Z]+) ([a-zA-Z]+) ([a-zA-Z]+(\.[a-zA-Z]+)+) "([^"]*)" \[Client (\b(?:(?:2(?:[0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9])\.){3}(?:(?:2([0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9]))\b)] \[Length ([0-9]+)] \[Gzip -] \[Sent-to (([0-9+(\.[0-9]+)+)] "([^"]*)" "([^"]*)"', 5, RawData)
-| extend HttpStatusCode = extract(@'(\[[^\]]*]) - ([0-9]+) ([0-9]+) - ([a-zA-Z]+) ([a-zA-Z]+) ([a-zA-Z]+(\.[a-zA-Z]+)+) "([^"]*)" \[Client (\b(?:(?:2(?:[0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9])\.){3}(?:(?:2([0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9]))\b)] \[Length ([0-9]+)] \[Gzip -] \[Sent-to (([0-9+(\.[0-9]+)+)] "([^"]*)" "([^"]*)"', 3, RawData)
-| extend HttpStatusCodeCache = extract(@'(\[[^\]]*]) - ([0-9]+) ([0-9]+) - ([a-zA-Z]+) ([a-zA-Z]+) ([a-zA-Z]+(\.[a-zA-Z]+)+) "([^"]*)" \[Client (\b(?:(?:2(?:[0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9])\.){3}(?:(?:2([0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9]))\b)] \[Length ([0-9]+)] \[Gzip -] \[Sent-to (([0-9+(\.[0-9]+)+)] "([^"]*)" "([^"]*)"', 2, RawData)
-| extend HttpResponseBodyBytes = extract(@'(\[[^\]]*]) - ([0-9]+) ([0-9]+) - ([a-zA-Z]+) ([a-zA-Z]+) ([a-zA-Z]+(\.[a-zA-Z]+)+) "([^"]*)" \[Client (\b(?:(?:2(?:[0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9])\.){3}(?:(?:2([0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9]))\b)] \[Length ([0-9]+)] \[Gzip -] \[Sent-to (([0-9+(\.[0-9]+)+)] "([^"]*)" "([^"]*)"', 11, RawData)
-| extend HttpReferrerOriginal = extract(@'(\[[^\]]*]) - ([0-9]+) ([0-9]+) - ([a-zA-Z]+) ([a-zA-Z]+) ([a-zA-Z]+(\.[a-zA-Z]+)+) "([^"]*)" \[Client (\b(?:(?:2(?:[0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9])\.){3}(?:(?:2([0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9]))\b)] \[Length ([0-9]+)] \[Gzip -] \[Sent-to (([0-9+(\.[0-9]+)+)] "([^"]*)" "([^"]*)"', 15, RawData)
-| extend HttpUserAgentOriginal = extract(@'(\[[^\]]*]) - ([0-9]+) ([0-9]+) - ([a-zA-Z]+) ([a-zA-Z]+) ([a-zA-Z]+(\.[a-zA-Z]+)+) "([^"]*)" \[Client (\b(?:(?:2(?:[0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9])\.){3}(?:(?:2([0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9]))\b)] \[Length ([0-9]+)] \[Gzip -] \[Sent-to (([0-9+(\.[0-9]+)+)] "([^"]*)" "([^"]*)"', 14, RawData)
+| extend HttpRequestMethod = extract(LogRegEx, 4, RawData)
+| extend Host = extract(LogRegEx, 6, RawData)
+| extend UrlOriginal = extract(LogRegEx, 8, RawData)
+| extend Upstream = extract(LogRegEx, 13, RawData)
+| extend Scheme = extract(LogRegEx, 5, RawData)
+| extend HttpStatusCode = extract(LogRegEx, 3, RawData)
+| extend HttpStatusCodeCache = extract(LogRegEx, 2, RawData)
+| extend HttpResponseBodyBytes = extract(LogRegEx, 11, RawData)
+| extend HttpReferrerOriginal = extract(LogRegEx, 15, RawData)
+| extend HttpUserAgentOriginal = extract(LogRegEx, 14, RawData)
 };
+let FallBackLogRegEx = @'(\[[^\]]*]) ([0-9]+) - ([a-zA-Z]+|-) ([a-zA-Z]+) (.*) "([^"]*)" \[Client (\b(?:(?:2(?:[0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9])\.){3}(?:(?:2([0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9]))\b)] \[Length ([0-9]+)] \[Gzip .*] "([^"]*)" "([^"]*)"';
 let nginx_fallbackaccesslog_events =() {
 NGINX_CL
-| where RawData matches regex @'(\[[^\]]*]) ([0-9]+) - ([a-zA-Z]+|-) ([a-zA-Z]+) (.*) "([^"]*)" \[Client (\b(?:(?:2(?:[0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9])\.){3}(?:(?:2([0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9]))\b)] \[Length ([0-9]+)] \[Gzip .*] "([^"]*)" "([^"]*)"'
+| where RawData matches regex FallBackLogRegEx
 | extend EventProduct = 'NGINX Proxy Manager'
 | extend EventType = 'AccessLog'
-| extend SrcIpAddr = extract(@'(\[[^\]]*]) ([0-9]+) - ([a-zA-Z]+|-) ([a-zA-Z]+) (.*) "([^"]*)" \[Client (\b(?:(?:2(?:[0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9])\.){3}(?:(?:2([0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9]))\b)] \[Length ([0-9]+)] \[Gzip .*] "([^"]*)" "([^"]*)"', 7, RawData)
+| extend SrcIpAddr = extract(FallBackLogRegEx, 7, RawData)
 | extend EventStartTime = todatetime(replace(@'\/', @'-', replace(@'(\d{2}\/\w{3}\/\d{4}):(\d{2}\:\d{2}\:\d{2})', @'\1 \2', extract(@'\[(.*?)\+\d+\]', 1, RawData))))
-| extend HttpRequestMethod = extract(@'(\[[^\]]*]) ([0-9]+) - ([a-zA-Z]+|-) ([a-zA-Z]+) (.*) "([^"]*)" \[Client (\b(?:(?:2(?:[0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9])\.){3}(?:(?:2([0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9]))\b)] \[Length ([0-9]+)] \[Gzip .*] "([^"]*)" "([^"]*)"', 3, RawData)
-| extend Host = extract(@'(\[[^\]]*]) ([0-9]+) - ([a-zA-Z]+|-) ([a-zA-Z]+) (.*) "([^"]*)" \[Client (\b(?:(?:2(?:[0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9])\.){3}(?:(?:2([0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9]))\b)] \[Length ([0-9]+)] \[Gzip .*] "([^"]*)" "([^"]*)"', 5, RawData)
-| extend UrlOriginal = extract(@'(\[[^\]]*]) ([0-9]+) - ([a-zA-Z]+|-) ([a-zA-Z]+) (.*) "([^"]*)" \[Client (\b(?:(?:2(?:[0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9])\.){3}(?:(?:2([0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9]))\b)] \[Length ([0-9]+)] \[Gzip .*] "([^"]*)" "([^"]*)"', 6, RawData)
-| extend Scheme = extract(@'(\[[^\]]*]) ([0-9]+) - ([a-zA-Z]+|-) ([a-zA-Z]+) (.*) "([^"]*)" \[Client (\b(?:(?:2(?:[0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9])\.){3}(?:(?:2([0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9]))\b)] \[Length ([0-9]+)] \[Gzip .*] "([^"]*)" "([^"]*)"', 4, RawData)
-| extend HttpStatusCode = extract(@'(\[[^\]]*]) ([0-9]+) - ([a-zA-Z]+|-) ([a-zA-Z]+) (.*) "([^"]*)" \[Client (\b(?:(?:2(?:[0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9])\.){3}(?:(?:2([0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9]))\b)] \[Length ([0-9]+)] \[Gzip .*] "([^"]*)" "([^"]*)"', 2, RawData)
-| extend HttpResponseBodyBytes = extract(@'(\[[^\]]*]) ([0-9]+) - ([a-zA-Z]+|-) ([a-zA-Z]+) (.*) "([^"]*)" \[Client (\b(?:(?:2(?:[0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9])\.){3}(?:(?:2([0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9]))\b)] \[Length ([0-9]+)] \[Gzip .*] "([^"]*)" "([^"]*)"', 9, RawData)
-| extend HttpReferrerOriginal = extract(@'(\[[^\]]*]) ([0-9]+) - ([a-zA-Z]+|-) ([a-zA-Z]+) (.*) "([^"]*)" \[Client (\b(?:(?:2(?:[0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9])\.){3}(?:(?:2([0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9]))\b)] \[Length ([0-9]+)] \[Gzip .*] "([^"]*)" "([^"]*)"', 11, RawData)
-| extend HttpUserAgentOriginal = extract(@'(\[[^\]]*]) ([0-9]+) - ([a-zA-Z]+|-) ([a-zA-Z]+) (.*) "([^"]*)" \[Client (\b(?:(?:2(?:[0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9])\.){3}(?:(?:2([0-4][0-9]|5[0-5])|[0-1]?[0-9]?[0-9]))\b)] \[Length ([0-9]+)] \[Gzip .*] "([^"]*)" "([^"]*)"', 10, RawData)
+| extend HttpRequestMethod = extract(FallBackLogRegEx, 3, RawData)
+| extend Host = extract(FallBackLogRegEx, 5, RawData)
+| extend UrlOriginal = extract(FallBackLogRegEx, 6, RawData)
+| extend Scheme = extract(FallBackLogRegEx, 4, RawData)
+| extend HttpStatusCode = extract(FallBackLogRegEx, 2, RawData)
+| extend HttpResponseBodyBytes = extract(FallBackLogRegEx, 9, RawData)
+| extend HttpReferrerOriginal = extract(FallBackLogRegEx, 11, RawData)
+| extend HttpUserAgentOriginal = extract(FallBackLogRegEx, 10, RawData)
 };
 let nginx_errorlog_events=() {
 NGINX_CL
