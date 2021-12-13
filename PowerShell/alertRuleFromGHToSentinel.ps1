@@ -54,7 +54,7 @@ function New-AzSentinelAlertRuleFromGitHub {
     {
         write-host $isGitHubDirectoryUrl was set to true, getting all URLs on page ... -ForegroundColor Green
         $gitDir = Invoke-WebRequest $gitHubRawUrl                                                                                               
-        $gitRules = ($gitDir.Links.outerhtml | ?{$_ -like "*.yaml*"} | %{[regex]::match($_,'master.*yaml"').Value}).Replace('"',"") | %{if($_ -ne ""){"https://raw.githubusercontent.com/Azure/Azure-Sentinel/" + $_}}
+        $gitRules = ($gitDir.Links.outerhtml | Where-Object{$_ -like "*.yaml*"} | ForEach-Object{[regex]::match($_,'master.*yaml"').Value}).Replace('"',"") | ForEach-Object{if($_ -ne ""){"https://raw.githubusercontent.com/Azure/Azure-Sentinel/" + $_}}
         write-host "found those rules on the page:" -ForegroundColor Green
         $gitRules
         # write all alert rules from github dir to sentinel
